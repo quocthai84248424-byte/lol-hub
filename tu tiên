@@ -1,0 +1,596 @@
+-- Hutaohub v2.0 - Advanced Roblox Script
+-- Created by: [ta là tu sĩ ma đạo] - chatbot🥀
+-- Discord: https://discord.gg/9e9XrgV9
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local StarterPack = game:GetService("StarterPack")
+
+local player = Players.LocalPlayer
+local character = player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+-- CONFIG - THAY ĐỔI THÔNG TIN CÁ NHÂN Ở ĐÂY
+local CREATOR_NAME = "ta là tu sĩ ma đạo" -- ta là tu sĩ ma đạo 
+local DISCORD_LINK = "https://discord.gg/9e9XrgV9"
+
+-- Anti-Ban System
+local AntiBan = {_hooks = {}, _signals = {}, _detected = false}
+function AntiBan:Protect()
+    local oldNamecall
+    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        if method:lower():find("kick") or method:lower():find("ban") then
+            return nil
+        end
+        return oldNamecall(self, ...)
+    end)
+end
+
+-- Tu Vi System
+local TuViSystem = {
+    Levels = {
+        "Phàm Nhân", "Kết Đan", "Luyện Khí", "Trúc Cơ", "Kim Đan", "Nguyên Anh", 
+        "Hoá Thần", "Luyện Hư", "Hợp Thể", "Đại Thừa", "Độ Kiếp", "Thánh Cảnh", 
+        "Thánh Vương", "Chí Tôn", "Chuẩn Đế", "Đại Đế", "Bán Tiên", "Tán Tiên", 
+        "Chân Tiên", "Huyền Tiên", "Địa Tiên", "Kim Tiên", "Tiên Vương", "Tiên Tôn", 
+        "Chuẩn Tiên Đế", "Tiên Đế", "Thiên Thần", "Chân Thần", "Thần Chủ", "Thần Vương", 
+        "Thần Hoàng", "Thần Tôn", "Thần Đế", "Pháp Tắc", "Tạo Hoá", "Đại Đạo", 
+        "Hủy Diệt", "Sinh Mệnh", "Thời Không", "Hỗn Nguyên Sơ Cực Đại Đạo", 
+        "Hỗn Nguyên Vô Cực Đại Đạo", "Hỗn Độn", "Hỗn Nguyên Vương", "Hỗn Nguyên Thánh", 
+        "Hỗn Nguyên Hoàng", "Hỗn Nguyên Đế", "Hồng Mông Giả", "Hồng Mông Linh Giả", 
+        "Hồng Mông Huyền Giả", "Hồng Mông Hoàng Giả", "Hồng Mông Thánh Giả", "Hồng Mông Thiên Giả"
+    },
+    CurrentLevel = 1,
+    LinhKhi = 0,
+    DataKey = "TuViData_" .. player.UserId
+}
+
+function TuViSystem:SaveData()
+    local data = {Level = self.CurrentLevel, LinhKhi = self.LinhKhi}
+    pcall(function()
+        game:GetService("DataStoreService"):GetDataStore("TuVi"):SetAsync(self.DataKey, data)
+    end)
+end
+
+function TuViSystem:LoadData()
+    pcall(function()
+        local data = game:GetService("DataStoreService"):GetDataStore("TuVi"):GetAsync(self.DataKey)
+        if data then
+            self.CurrentLevel = data.Level or 1
+            self.LinhKhi = data.LinhKhi or 0
+        end
+    end)
+end
+
+function TuViSystem:AddLinhKhi(amount)
+    self.LinhKhi = self.LinhKhi + amount
+    if self.LinhKhi >= 100 then
+        self.LinhKhi = 0
+        self.CurrentLevel = math.min(self.CurrentLevel + 1, #self.Levels)
+        self:LevelUpEffect()
+    end
+    self:UpdateDisplay()
+    self:SaveData()
+end
+
+function TuViSystem:LevelUpEffect()
+    local effect = Instance.new("Part")
+    effect.Size = Vector3.new(8, 8, 8)
+    effect.Position = rootPart.Position
+    effect.Anchored = true
+    effect.CanCollide = false
+    effect.Material = Enum.Material.Neon
+    effect.BrickColor = BrickColor.new("Bright yellow")
+    effect.Parent = workspace
+    
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://138186576"
+    sound.Volume = 1
+    sound.Parent = effect
+    sound:Play()
+    
+    game:GetService("Debris"):AddItem(effect, 3)
+end
+
+-- Công Pháp System
+local CongPhapSystem = {
+    ["Cửu Chuyển Kim Đan Công"] = {
+        Damage = 500,
+        Color = "Bright yellow",
+        Effect = "Explosion"
+    },
+    ["Thái Cực Âm Dương Đạo"] = {
+        Damage = 800, 
+        Color = "Black",
+        Effect = "Ring"
+    },
+    ["Hỗn Độn Khai Thiên Trảo"] = {
+        Damage = 1200,
+        Color = "Really red", 
+        Effect = "Beam"
+    }
+}
+
+function CreateCongPhapTools()
+    for name, data in pairs(CongPhapSystem) do
+        local tool = Instance.new("Tool")
+        tool.Name = name
+        tool.ToolTip = "Công Pháp: " .. name
+        tool.CanBeDropped = false
+        
+        local handle = Instance.new("Part")
+        handle.Name = "Handle"
+        handle.Size = Vector3.new(1, 1, 1)
+        handle.BrickColor = BrickColor.new(data.Color)
+        handle.Material = Enum.Material.Neon
+        handle.Parent = tool
+        
+        tool.Activated:Connect(function()
+            CastCongPhap(name)
+        end)
+        
+        tool.Parent = player.Backpack
+    end
+end
+
+function CastCongPhap(congPhapName)
+    local congPhap = CongPhapSystem[congPhapName]
+    if congPhap then
+        -- Hiệu ứng công pháp
+        local mouse = player:GetMouse()
+        local targetPos = mouse.Hit.Position
+        
+        if congPhap.Effect == "Explosion" then
+            local explosion = Instance.new("Explosion")
+            explosion.Position = targetPos
+            explosion.BlastPressure = congPhap.Damage
+            explosion.BlastRadius = 15
+            explosion.Visible = true
+            explosion.Parent = workspace
+        elseif congPhap.Effect == "Ring" then
+            local ring = Instance.new("Part")
+            ring.Size = Vector3.new(10, 1, 10)
+            ring.Position = targetPos
+            ring.Anchored = true
+            ring.CanCollide = false
+            ring.BrickColor = BrickColor.new(congPhap.Color)
+            ring.Material = Enum.Material.Neon
+            ring.Parent = workspace
+            game:GetService("Debris"):AddItem(ring, 3)
+        end
+        
+        TuViSystem:AddLinhKhi(5) -- Thêm linh khí khi sử dụng công pháp
+    end
+end
+
+-- GUI System
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "HutaohubV2"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Mini GUI (Có thể di chuyển)
+local miniGui = Instance.new("ImageButton")
+miniGui.Size = UDim2.new(0, 50, 0, 50)
+miniGui.Position = UDim2.new(0, 10, 0, 10)
+miniGui.BackgroundColor3 = Color3.new(1, 1, 1)
+miniGui.Image = "rbxassetid://2017738 #1083355." -- Thay bằng ID ảnh của bạn
+miniGui.Parent = screenGui
+
+-- Main GUI (Có thể di chuyển và tắt)
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 450, 0, 600)
+mainFrame.Position = UDim2.new(0.5, -225, 0.5, -300)
+mainFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+mainFrame.BackgroundTransparency = 0.3
+mainFrame.BorderColor3 = Color3.new(1, 0, 0)
+mainFrame.BorderSizePixel = 2
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+-- Close Button
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -35, 0, 5)
+closeButton.BackgroundColor3 = Color3.new(1, 0, 0)
+closeButton.TextColor3 = Color3.new(1, 1, 1)
+closeButton.Text = "X"
+closeButton.Font = Enum.Font.GothamBold
+closeButton.TextSize = 16
+closeButton.Parent = mainFrame
+
+-- Khu vực chọn tab
+local tabButtonsFrame = Instance.new("Frame")
+tabButtonsFrame.Size = UDim2.new(1, 0, 0, 40)
+tabButtonsFrame.Position = UDim2.new(0, 0, 0, 40)
+tabButtonsFrame.BackgroundTransparency = 1
+tabButtonsFrame.Parent = mainFrame
+
+local contentFrame = Instance.new("Frame")
+contentFrame.Size = UDim2.new(1, -20, 1, -100)
+contentFrame.Position = UDim2.new(0, 10, 0, 90)
+contentFrame.BackgroundTransparency = 1
+contentFrame.Parent = mainFrame
+
+-- Title với tên creator
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 40)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+title.TextColor3 = Color3.new(1, 1, 1)
+title.Text = "HUTAOHUB v2.0 - Created by: " .. CREATOR_NAME
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
+title.Parent = mainFrame
+
+-- Các biến toàn cục
+local godModeEnabled = false
+local invisibleEnabled = false
+local espEnabled = false
+local fakeLagEnabled = false
+local espBoxes = {}
+local currentTab = ""
+
+-- Tạo tab buttons
+local tabs = {
+    {"Thông Tin", Color3.new(0.2, 0.6, 1)},
+    {"Main", Color3.new(0.2, 1, 0.2)},
+    {"Công Pháp", Color3.new(1, 0.5, 0.2)}
+}
+
+local function ClearContent()
+    for _, child in pairs(contentFrame:GetChildren()) do
+        child:Destroy()
+    end
+end
+
+local function CreateButton(text, position, callback, parent)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(1, 0, 0, 35)
+    button.Position = position
+    button.BackgroundColor3 = Color3.new(0.3, 0.3, 0.4)
+    button.TextColor3 = Color3.new(1, 1, 1)
+    button.Text = text
+    button.Font = Enum.Font.Gotham
+    button.TextSize = 14
+    button.Parent = parent
+    
+    button.MouseButton1Click:Connect(callback)
+    return button
+end
+
+-- Khu Thông Tin
+local function ShowThongTinTab()
+    ClearContent()
+    currentTab = "Thông Tin"
+    
+    local infoFrame = Instance.new("Frame")
+    infoFrame.Size = UDim2.new(1, 0, 1, 0)
+    infoFrame.BackgroundTransparency = 1
+    infoFrame.Parent = contentFrame
+    
+    local creatorLabel = Instance.new("TextLabel")
+    creatorLabel.Size = UDim2.new(1, 0, 0, 30)
+    creatorLabel.Position = UDim2.new(0, 0, 0, 0)
+    creatorLabel.BackgroundTransparency = 1
+    creatorLabel.TextColor3 = Color3.new(1, 1, 0)
+    creatorLabel.Text = "Creator: " .. CREATOR_NAME
+    creatorLabel.Font = Enum.Font.GothamBold
+    creatorLabel.TextSize = 16
+    creatorLabel.Parent = infoFrame
+    
+    local discordLabel = Instance.new("TextLabel")
+    discordLabel.Size = UDim2.new(1, 0, 0, 30)
+    discordLabel.Position = UDim2.new(0, 0, 0, 40)
+    discordLabel.BackgroundTransparency = 1
+    discordLabel.TextColor3 = Color3.new(0.5, 0.7, 1)
+    discordLabel.Text = "Discord: " .. DISCORD_LINK
+    discordLabel.Font = Enum.Font.Gotham
+    discordLabel.TextSize = 14
+    discordLabel.Parent = infoFrame
+    
+    TuViDisplay = Instance.new("TextLabel")
+    TuViDisplay.Size = UDim2.new(1, 0, 0, 60)
+    TuViDisplay.Position = UDim2.new(0, 0, 0, 80)
+    TuViDisplay.BackgroundTransparency = 1
+    TuViDisplay.TextColor3 = Color3.new(0, 1, 1)
+    TuViDisplay.Text = string.format("Tu Vi: %s\nLinh Khi: %d/100", 
+        TuViSystem.Levels[TuViSystem.CurrentLevel], TuViSystem.LinhKhi)
+    TuViDisplay.Font = Enum.Font.GothamBold
+    TuViDisplay.TextSize = 18
+    TuViDisplay.Parent = infoFrame
+    
+    local statsLabel = Instance.new("TextLabel")
+    statsLabel.Size = UDim2.new(1, 0, 0, 100)
+    statsLabel.Position = UDim2.new(0, 0, 0, 150)
+    statsLabel.BackgroundTransparency = 1
+    statsLabel.TextColor3 = Color3.new(1, 1, 1)
+    statsLabel.Text = "Hutaohub v2.0\nDarkForge-X Enhanced\nĐã bảo vệ: " .. player.Name
+    statsLabel.Font = Enum.Font.Gotham
+    statsLabel.TextSize = 12
+    statsLabel.Parent = infoFrame
+end
+
+-- Khu Main
+local function ShowMainTab()
+    ClearContent()
+    currentTab = "Main"
+    
+    local mainContent = Instance.new("Frame")
+    mainContent.Size = UDim2.new(1, 0, 1, 0)
+    mainContent.BackgroundTransparency = 1
+    mainContent.Parent = contentFrame
+    
+    local yPosition = 0
+    local buttonHeight = 35
+    local gap = 5
+    
+    -- GodMode
+    CreateButton("GodMode: " .. (godModeEnabled and "ON" or "OFF"), 
+        UDim2.new(0, 0, 0, yPosition), function(button)
+        godModeEnabled = not godModeEnabled
+        if godModeEnabled then
+            humanoid.MaxHealth = math.huge
+            humanoid.Health = math.huge
+            button.Text = "GodMode: ON"
+        else
+            humanoid.MaxHealth = 100
+            humanoid.Health = 100
+            button.Text = "GodMode: OFF"
+        end
+    end, mainContent)
+    yPosition = yPosition + buttonHeight + gap
+    
+    -- Invisible
+    CreateButton("Invisible: " .. (invisibleEnabled and "ON" or "OFF"), 
+        UDim2.new(0, 0, 0, yPosition), function(button)
+        invisibleEnabled = not invisibleEnabled
+        if invisibleEnabled then
+            for _, part in pairs(character:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.Transparency = 1
+                end
+            end
+            button.Text = "Invisible: ON"
+        else
+            for _, part in pairs(character:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.Transparency = 0
+                end
+            end
+            button.Text = "Invisible: OFF"
+        end
+    end, mainContent)
+    yPosition = yPosition + buttonHeight + gap
+    
+    -- ESP
+    CreateButton("ESP: " .. (espEnabled and "ON" or "OFF"), 
+        UDim2.new(0, 0, 0, yPosition), function(button)
+        espEnabled = not espEnabled
+        button.Text = "ESP: " .. (espEnabled and "ON" or "OFF")
+        if espEnabled then
+            for _, otherPlayer in pairs(Players:GetPlayers()) do
+                if otherPlayer ~= player then
+                    CreateESP(otherPlayer)
+                end
+            end
+        else
+            for _, box in pairs(espBoxes) do
+                if box then box:Destroy() end
+            end
+            espBoxes = {}
+        end
+    end, mainContent)
+    yPosition = yPosition + buttonHeight + gap
+    
+    -- Fake Lag
+    CreateButton("Fake Lag: " .. (fakeLagEnabled and "ON" or "OFF"), 
+        UDim2.new(0, 0, 0, yPosition), function(button)
+        fakeLagEnabled = not fakeLagEnabled
+        button.Text = "Fake Lag: " .. (fakeLagEnabled and "ON" or "OFF")
+        if fakeLagEnabled then
+            game:GetService("NetworkClient"):SetOutgoingKBPSLimit(10)
+        else
+            game:GetService("NetworkClient"):SetOutgoingKBPSLimit(1000)
+        end
+    end, mainContent)
+    yPosition = yPosition + buttonHeight + gap
+    
+    -- Fix Lag
+    CreateButton("Fix Lag", UDim2.new(0, 0, 0, yPosition), function()
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("ParticleEmitter") or obj:IsA("Fire") or obj:IsA("Smoke") then
+                obj:Destroy()
+            end
+        end
+        settings().Rendering.QualityLevel = 1
+    end, mainContent)
+    yPosition = yPosition + buttonHeight + gap
+    
+    -- Speed Control
+    CreateButton("Speed Control", UDim2.new(0, 0, 0, yPosition), function()
+        humanoid.WalkSpeed = 50
+    end, mainContent)
+end
+
+-- Khu Công Pháp
+local function ShowCongPhapTab()
+    ClearContent()
+    currentTab = "Công Pháp"
+    
+    local congPhapContent = Instance.new("Frame")
+    congPhapContent.Size = UDim2.new(1, 0, 1, 0)
+    congPhapContent.BackgroundTransparency = 1
+    congPhapContent.Parent = contentFrame
+    
+    local yPosition = 0
+    local buttonHeight = 35
+    local gap = 5
+    
+    -- Nút tăng linh khí
+    CreateButton("+1 Linh Khí (Click)", UDim2.new(0, 0, 0, yPosition), function()
+        TuViSystem:AddLinhKhi(1)
+    end, congPhapContent)
+    yPosition = yPosition + buttonHeight + gap
+    
+    -- Kích hoạt công pháp tools
+    CreateButton("Kích Hoạt Công Pháp", UDim2.new(0, 0, 0, yPosition), function()
+        CreateCongPhapTools()
+    end, congPhapContent)
+    yPosition = yPosition + buttonHeight + gap
+    
+    -- Thiên Kiếm
+    CreateButton("Triệu Hồi Thiên Kiếm", UDim2.new(0, 0, 0, yPosition), function()
+        SpawnThienKiem()
+    end, congPhapContent)
+    yPosition = yPosition + buttonHeight + gap
+    
+    -- Phân Thân
+    CreateButton("Tạo Phân Thân", UDim2.new(0, 0, 0, yPosition), function()
+        CreatePhanThan()
+    end, congPhapContent)
+end
+
+-- Tạo tab buttons
+for i, tab in ipairs(tabs) do
+    local tabName, tabColor = tab[1], tab[2]
+    local tabButton = Instance.new("TextButton")
+    tabButton.Size = UDim2.new(0.3, -5, 1, 0)
+    tabButton.Position = UDim2.new((i-1)*0.33, 0, 0, 0)
+    tabButton.BackgroundColor3 = tabColor
+    tabButton.TextColor3 = Color3.new(1, 1, 1)
+    tabButton.Text = tabName
+    tabButton.Font = Enum.Font.GothamBold
+    tabButton.TextSize = 12
+    tabButton.Parent = tabButtonsFrame
+    
+    tabButton.MouseButton1Click:Connect(function()
+        if tabName == "Thông Tin" then
+            ShowThongTinTab()
+        elseif tabName == "Main" then
+            ShowMainTab()
+        elseif tabName == "Công Pháp" then
+            ShowCongPhapTab()
+        end
+    end)
+end
+
+-- ESP Function
+function CreateESP(targetPlayer)
+    local character = targetPlayer.Character
+    if not character then return end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.FillColor = Color3.new(1, 0, 0)
+    highlight.OutlineColor = Color3.new(1, 1, 1)
+    highlight.FillTransparency = 0.5
+    highlight.Parent = character
+    highlight.Adornee = character
+    
+    espBoxes[targetPlayer] = highlight
+end
+
+-- Thiên Kiếm Function
+function SpawnThienKiem()
+    local sword = Instance.new("Part")
+    sword.Name = "ThienKiem"
+    sword.Size = Vector3.new(2, 8, 1)
+    sword.BrickColor = BrickColor.new("Bright yellow")
+    sword.Material = Enum.Material.Neon
+    sword.Position = rootPart.Position + Vector3.new(0, 15, 0)
+    sword.Anchored = true
+    sword.CanCollide = false
+    sword.Parent = workspace
+    
+    local fire = Instance.new("Fire")
+    fire.Color = Color3.new(1, 1, 0)
+    fire.SecondaryColor = Color3.new(1, 0.5, 0)
+    fire.Size = 8
+    fire.Parent = sword
+    
+    local light = Instance.new("PointLight")
+    light.Color = Color3.new(1, 1, 0)
+    light.Brightness = 10
+    light.Range = 25
+    light.Parent = sword
+    
+    -- Ai cũng có thể thấy
+    sword.Changed:Connect(function()
+        -- Đảm bảo kiếm luôn hiển thị
+    end)
+    
+    game:GetService("Debris"):AddItem(sword, 30)
+end
+
+-- Phân Thân Function
+function CreatePhanThan()
+    local clone = character:Clone()
+    clone.Name = "PhanThan_" .. player.Name
+    clone.Parent = workspace
+    
+    -- Đặt vị trí gần character chính
+    local humanoidRootPart = clone:FindFirstChild("HumanoidRootPart")
+    if humanoidRootPart then
+        humanoidRootPart.Position = rootPart.Position + Vector3.new(5, 0, 0)
+    end
+    
+    -- Animation phân thân
+    for _, part in pairs(clone:GetChildren()) do
+        if part:IsA("BasePart") then
+            part.BrickColor = BrickColor.new("Bright blue")
+            part.Transparency = 0.3
+        end
+    end
+    
+    -- Tự hủy sau 30s
+    delay(30, function()
+        if clone then
+            clone:Destroy()
+        end
+    end)
+end
+
+-- GUI Controls
+closeButton.MouseButton1Click:Connect(function()
+    mainFrame.Visible = false
+end)
+
+miniGui.MouseButton1Click:Connect(function()
+    mainFrame.Visible = not mainFrame.Visible
+end)
+
+-- Auto Farm Linh Khi
+spawn(function()
+    while true do
+        wait(1)
+        TuViSystem:AddLinhKhi(1)
+        if TuViDisplay then
+            TuViDisplay.Text = string.format("Tu Vi: %s\nLinh Khi: %d/100", 
+                TuViSystem.Levels[TuViSystem.CurrentLevel], TuViSystem.LinhKhi)
+        end
+    end
+end)
+
+-- Anti-AFK
+local VirtualInputManager = game:GetService("VirtualInputManager")
+spawn(function()
+    while true do
+        wait(30)
+        VirtualInputManager:SendKeyEvent(true, "LeftControl", false, game)
+        VirtualInputManager:SendKeyEvent(false, "LeftControl", false, game)
+    end
+end)
+
+-- Initialize
+AntiBan:Protect()
+TuViSystem:LoadData()
+ShowThongTinTab() -- Mặc định hiển thị tab Thông Tin
+
+print("lol hub!")
+print("Creator: ta là tu sĩ ma đạo and chatbot💔🥀")
+print("lol hub: Sẵn sàng")
