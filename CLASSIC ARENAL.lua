@@ -2,11 +2,11 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
     Name = "script by ilovedog1901ilovecat5551",
-    LoadingTitle = "Classic Arena Hub Pro - FIX LOG",
+    LoadingTitle = "Classic Arena Hub PRO - ULTIMATE FIX",
     LoadingSubtitle = "by ilovedog1901ilovecat5551",
     ConfigurationSaving = {
         Enabled = true,
-        FolderName = "ArenaHubVip",
+        FolderName = "ArenaFix",
         FileName = "Config"
     },
     KeySystem = false
@@ -21,7 +21,6 @@ local hitboxSize = 1
 local infDash = false
 local noCooldown = false
 
--- HỆ THỐNG CHỐNG BAN/KICK VIP
 local function Bypass()
     local mt = getrawmetatable(game)
     local old = mt.__namecall
@@ -38,7 +37,6 @@ pcall(Bypass)
 local MainTab = Window:CreateTab("Main", 4483362458)
 local MiscTab = Window:CreateTab("Misc", 4483345998)
 
--- TAB MAIN
 MainTab:CreateInput({
     Name = "Target Player Name",
     PlaceholderText = "Nhập tên...",
@@ -56,14 +54,15 @@ MainTab:CreateToggle({
             while autoKillEnabled do
                 pcall(function()
                     local target = game.Players:FindFirstChild(targetPlayer)
-                    if target and target.Character then
+                    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
                         lp.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
                         local tool = lp.Character:FindFirstChildOfClass("Tool")
                         if tool then tool:Activate() end
-                        game:GetService("ReplicatedStorage").Events.Skill:FireServer("Attack")
+                        local args = {[1] = "Skill", [2] = target.Character.Humanoid}
+                        game:GetService("ReplicatedStorage").Events.CombatEvent:FireServer(unpack(args))
                     end
                 end)
-                task.wait()
+                task.wait(0.05)
             end
         end)
     end,
@@ -71,7 +70,7 @@ MainTab:CreateToggle({
 
 local VisualPart = Instance.new("Part")
 VisualPart.Shape = Enum.PartType.Ball
-VisualPart.Color = Color3.fromRGB(255, 255, 255)
+VisualPart.Color = Color3.fromRGB(0, 255, 150)
 VisualPart.Transparency = 0.8
 VisualPart.CanCollide = false
 VisualPart.Material = Enum.Material.ForceField
@@ -88,8 +87,10 @@ MainTab:CreateSlider({
         if Value > 1 then
             VisualPart.Parent = lp.Character.HumanoidRootPart
             VisualPart.Size = Vector3.new(Value, Value, Value)
-            local weld = VisualPart:FindFirstChild("Weld") or Instance.new("Weld", VisualPart)
-            weld.Part0 = VisualPart; weld.Part1 = lp.Character.HumanoidRootPart
+            local weld = VisualPart:FindFirstChild("ManualWeld") or Instance.new("Weld", VisualPart)
+            weld.Name = "ManualWeld"
+            weld.Part0 = VisualPart
+            weld.Part1 = lp.Character.HumanoidRootPart
             
             spawn(function()
                 while hitboxSize > 1 do
@@ -97,12 +98,12 @@ MainTab:CreateSlider({
                         if v ~= lp and v.Character and v.Character:FindFirstChild("Humanoid") then
                             local mag = (lp.Character.HumanoidRootPart.Position - v.Character.HumanoidRootPart.Position).Magnitude
                             if mag <= hitboxSize then
-                                -- Fire event sát thương trực tiếp của game
-                                game:GetService("ReplicatedStorage").Events.HitEvent:FireServer(v.Character.Humanoid)
+                                local args = {[1] = "Hit", [2] = v.Character.Humanoid}
+                                game:GetService("ReplicatedStorage").Events.CombatEvent:FireServer(unpack(args))
                             end
                         end
                     end
-                    task.wait(0.1)
+                    task.wait(0.2)
                 end
             end)
         else
@@ -120,6 +121,7 @@ MainTab:CreateToggle({
         if Value then
             local bv = Instance.new("BodyVelocity", lp.Character.HumanoidRootPart)
             bv.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+            bv.Name = "VipFly"
             spawn(function()
                 while flyEnabled do
                     local cam = workspace.CurrentCamera.CFrame
@@ -141,11 +143,11 @@ MainTab:CreateToggle({
 MainTab:CreateSlider({
     Name = "Fly Speed",
     Range = {10, 500},
-    CurrentValue = 50,
+    Increment = 10,
+    CurrentValue = flySpeed,
     Callback = function(Value) flySpeed = Value end,
 })
 
--- TAB MISC (FIXED NO COOLDOWN & INF DASH)
 MiscTab:CreateToggle({
     Name = "Infinite Dash",
     CurrentValue = false,
@@ -155,15 +157,15 @@ MiscTab:CreateToggle({
         spawn(function()
             while infDash do
                 pcall(function()
-                    -- Tìm module Dash trong bộ nhớ
                     for _, v in pairs(getgc(true)) do
                         if type(v) == "table" and rawget(v, "Dash") then
                             v.DashCD = 0
                             v.CanDash = true
+                            v.CurrentDashCD = 0
                         end
                     end
                 end)
-                task.wait(0.1)
+                task.wait(0.3)
             end
         end)
     end,
@@ -178,16 +180,15 @@ MiscTab:CreateToggle({
         spawn(function()
             while noCooldown do
                 pcall(function()
-                    -- Quét và ép mọi biến có tên Cooldown về 0
                     for _, v in pairs(getgc(true)) do
-                        if type(v) == "table" then
-                            if v.Cooldown then v.Cooldown = 0 end
-                            if v.MaxCooldown then v.MaxCooldown = 0 end
-                            if v.LastUsed then v.LastUsed = 0 end
+                        if type(v) == "table" and (rawget(v, "Cooldown") or rawget(v, "CD")) then
+                            v.Cooldown = 0
+                            v.CD = 0
+                            v.LastUsed = 0
                         end
                     end
                 end)
-                task.wait(0.2)
+                task.wait(0.5)
             end
         end)
     end,
@@ -195,7 +196,7 @@ MiscTab:CreateToggle({
 
 Rayfield:Notify({
     Title = "FIXED BY ilovedog1901ilovecat5551",
-    Content = "Tất cả lỗi Hitbox và Cooldown đã được xử lý!",
+    Content = "Hitbox, Dash và Cooldown đã được tối ưu hóa!",
     Duration = 5,
     Image = 4483345998,
 })
